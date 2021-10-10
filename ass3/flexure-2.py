@@ -96,19 +96,21 @@ Vi = np.array([(height * rho_crust * gravity * width) for height in heights])
 
 
 def f(u):
+    # function to take care of fourier-esque calculation:
     return np.exp(-u) * (np.cos(u) + np.sin(u))
 
 
-x = np.arange(0, 20 * width, width)  # query points
+x = np.arange(0, 20 * width, width)  # make some query points
 w_array = np.ndarray((5, x.shape[0]))  # initialize an array to fill with deflections
+# iteratively calculate the deflection profile for each block:
 for ii in range(centres.shape[0]):
     u = np.abs(x - centres[ii]) / alpha
     w_array[ii, :] = -(Vi[ii] * f(u)) / (2 * (rho_mantle - rho_seds) * gravity * alpha)
 
-# sum deflection profiles from each block:
+# sum the deflection profiles from each block:
 w_combined = w_array.sum(axis=0)
 
-# make a figure:
+# plot the results:
 fig = plt.figure(figsize=(10, 6))
 ax = plt.axes()
 for ii in range(5):
