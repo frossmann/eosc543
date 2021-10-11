@@ -1,5 +1,6 @@
+# %%
 # flexure-2
-#%%
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -152,5 +153,7 @@ print(
     f"Depth at leading edge of shortest block is {w_combined[np.abs(x - edges[-1]).argmin()]/1000:.2f} km."
 )
 
+
+# %%
 
 # %%
