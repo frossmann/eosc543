@@ -17,31 +17,27 @@ rho_w = 1035  # kg/m3
 
 times = -np.array([100, 65, 55, 20, 0])  # Myr ago?
 elevations = -np.array([0.217, -1.031, -1.251, -1.704, -1.854]) * 1000  # m
-# %% a)
+
+
+#  a)
 fig = plt.figure(figsize=(14, 7))
 plt.plot(times, elevations, linewidth=3)
 plt.grid()
 plt.ylabel("Subsidence [m]")
 plt.xlabel("Myr from present")
 plt.title("Table 1 Elevation vs. Time")
-# %% b)
+
+
+# b)
 # calculate the thermal time constant:
 tau = (y_l ** 2) / (np.pi ** 2 * K)  # seconds...
 tau_myr = tau / 60 / 60 / 24 / 365 / 1e6
 print(f"Thermal time constant: {tau_myr:.1f} Myr")
 
-# %% c)
+
+#  c)
 #  plot subsidence against scaled time constant:
 etime = 1 - np.exp(-times / tau_myr)  # dimensionless [Myr/Myr]
-
-# # make the plot:
-# plt.figure(figsize=(14, 7))
-# plt.plot(etime, elevations, linewidth=3)
-# plt.ylabel("Subsidence [m]")
-# plt.xlabel(r"$1-e^{-\frac{t}{\tau}}$")
-# plt.title("Subsidence vs. scaled time")
-# plt.grid()
-
 
 # fit a line with linear least squares (simple)
 A = np.vstack([etime, np.ones(len(etime))]).T
@@ -61,8 +57,7 @@ plt.title("Subsidence vs. scaled time")
 plt.grid()
 
 
-# %%
-# #find E0 and beta...
+# e) find E0 and beta...
 E0_w = (4 * y_l * rho_m * alpha * Tm) / (np.pi ** 2 * (rho_m - rho_w))  # for water
 E0_s = (4 * y_l * rho_m * alpha * Tm) / (np.pi ** 2 * (rho_m - rho_s))  # for seds
 
@@ -103,6 +98,7 @@ plt.legend()
 plt.text(1.1, 1400, r"$\beta_{w}$ = " + f"{beta_w[0]:.3}", fontsize=12)
 plt.text(1.1, 1200, r"$\beta_{s}$ = " + f"{beta_s[0]:.3}", fontsize=12)
 
+# f) reasoning.
 
 # %% QUESTION 2:
 # preliminaries:
@@ -205,7 +201,7 @@ ages = [0, 10, 20, 30, 50, 60, 70, 75][::-1]  # Ma, reversed
 fig = plt.figure(figsize=(14, 7))
 ax = plt.subplot()
 plt.plot(ages, depths, label="Compacted")
-plt.plot(ages, decompacted_depths, label="Decompacted")
+plt.plot(ages, decompacted_depths[::-1], label="Decompacted")
 plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
 plt.grid()
@@ -213,6 +209,8 @@ plt.ylabel("Depth [m]")
 ax.set_xlabel("Absolute age [Ma]")
 plt.title("Subsidence history")
 plt.legend()
+
+
 # %% add the bathymetric correction:
 bath_depths = [200, 500, 1000, 0, 200, 500, 100]  # top down depths [m]
 bath_delta = [200, 300, 500, 0, 100, 300, 100]  # water 'thickness'' [m]
@@ -245,7 +243,7 @@ for ii in range(7):
 column_rho = np.zeros(shape=(7,))
 for ii in range(7):
     column_rho[ii] = np.sum(
-        (rho_array[:, ii] * T_array[:, ii] / decompacted_depths[-ii - 1])
+        (rho_array[:, ii] * T_array[:, ii]) / decompacted_depths[ii]
     )
 
 # calculate Airy compensated tectonic subsidence for each column:
@@ -253,9 +251,9 @@ for ii in range(7):
 sub_corr = np.zeros(shape=(7,))
 for ii in range(7):
     sub_corr[ii] = (
-        decompacted_depths[-ii - 1] * ((rho_m - column_rho[ii]) / (rho_m - rho_w))
-        - bath_delta[ii] * (rho_w / (rho_m - rho_w))
-        + (bath_depths[ii] - bath_delta[ii])
+        decompacted_depths[ii] * ((rho_m - column_rho[ii]) / (rho_m - rho_w))
+        - bath_depths[ii] * (rho_w / (rho_m - rho_w))
+        + (bath_delta[ii] - bath_depths[ii])
     )
 
 corrected_depths = np.append(sub_corr, 0)[::-1]  # slap a zero on the end and reverse
@@ -266,7 +264,7 @@ corrected_depths = np.append(sub_corr, 0)[::-1]  # slap a zero on the end and re
 fig, ax = plt.subplots(figsize=(14, 7))
 ax = plt.subplot()
 plt.plot(ages, depths, label="Compacted", marker=".", markersize=10)
-plt.plot(ages, decompacted_depths, label="Decompacted", marker=".", markersize=10)
+plt.plot(ages, decompacted_depths[::-1], label="Decompacted", marker=".", markersize=10)
 plt.plot(ages, corrected_depths, label="Tectonic subsidence", marker=".", markersize=10)
 plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
