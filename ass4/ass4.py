@@ -34,16 +34,15 @@ print(f"Thermal time constant: {tau_myr:.1f} Myr")
 #  plot subsidence against scaled time constant:
 etime = 1 - np.exp(-times / tau_myr)  # dimensionless [Myr/Myr]
 
-# make the plot:
-plt.figure(figsize=(14, 7))
-plt.plot(etime, elevations, linewidth=3)
-plt.ylabel("Subsidence [m]")
-plt.xlabel(r"$1-e^{-\frac{t}{\tau}}$")
-plt.title("Subsidence vs. scaled time")
-plt.grid()
+# # make the plot:
+# plt.figure(figsize=(14, 7))
+# plt.plot(etime, elevations, linewidth=3)
+# plt.ylabel("Subsidence [m]")
+# plt.xlabel(r"$1-e^{-\frac{t}{\tau}}$")
+# plt.title("Subsidence vs. scaled time")
+# plt.grid()
 
 
-# %%
 # fit a line with linear least squares (simple)
 A = np.vstack([etime, np.ones(len(etime))]).T
 m, c = np.linalg.lstsq(A, elevations, rcond=None)[0]
@@ -108,35 +107,22 @@ plt.text(1.1, 1200, r"$\beta_{s}$ = " + f"{beta_s[0]:.3}", fontsize=12)
 # %% QUESTION 2:
 # preliminaries:
 # set the constants for each lithology:
-shale = {}
-shale["c"] = 0.0005  # constant
-shale["phi"] = 0.5  # porosity
-shale["rho"] = 2720  # kgm-3
+# shale = {}
+shale = {"c": 0.0005, "phi": 0.5, "rho": 2720}
 
-sand = {}
-sand["c"] = 0.0003  # constant
-sand["phi"] = 0.4  # porosity
-sand["rho"] = 2650  # kgm-3
+sand = {"c": 0.0003, "phi": 0.4, "rho": 2650}
 
-lime = {}
-lime["c"] = 0.0007  # constant
-lime["phi"] = 0.5  # porosity
-lime["rho"] = 2710  # kgm-3
+lime = {"c": 0.0007, "phi": 0.5, "rho": 2710}
 
 # pack all the lithologies in a dictionary:
-vars = {}
-vars["shale"] = shale
-vars["sand"] = sand
-vars["lime"] = lime
-vars["none"] = None
-
+vars = {"shale": shale, "sand": sand, "lime": lime, "none": None}
 
 # set up the problem:
 depths = np.array(
     [0, 1000, 1800, 1900, 1900, 2800, 2900, 5100]
 )  # top down depths to edges
-heights = np.array([1000, 800, 100, 0, 900, 100, 2200])  # top down thickneses
-midpoints = depths[1:] - heights / 2
+depths_delta = np.array([1000, 800, 100, 0, 900, 100, 2200])  # top down thickneses
+midpoints = depths[1:] - depths_delta / 2
 liths = [
     "lime",
     "shale",
@@ -150,13 +136,14 @@ liths = [
 #%% decompaction:
 
 # 1) calculate in situ compacted porosities:
-phis = np.zeros_like(heights, dtype=object)
+phis = np.zeros_like(depths_delta, dtype=object)
 for ii in range(len(liths)):
-    if heights[ii] > 0:
-        phi_0 = vars[liths[ii]]["phi"] * np.exp(-vars[liths[ii]]["c"] * midpoints[ii])
+    if depths_delta[ii] > 0:
+        phis[ii] = vars[liths[ii]]["phi"] * np.exp(
+            -vars[liths[ii]]["c"] * midpoints[ii]
+        )
     else:
-        phi_0 = 0
-    phis[ii] = phi_0
+        phis[ii] = 0
 
 
 def update_phi(consts, midpoint):
@@ -172,24 +159,15 @@ def update_T(height, phi_old, phi_new):
 
 
 #%%
-# # want to get 41...
-# phi_old = phis[1]
-# phi_new = update_phi(vars[liths[1]], heights[1] / 2)
-# T_new = update_T(heights[1], phi_old, phi_new)
-
-# # now find the porosity of the block underneath...
-# phi_old = phis[2]
-# phi_new = update_phi(vars[liths[2]], T_new + heights[2] / 2)
-# T_new = update_T(heights[2], phi_old, phi_new)
-
+# Initialize empty arrays for decompacted porosity and thicknesses:
 phi_array = np.zeros(shape=(7, 7))
 T_array = np.zeros(shape=(7, 7))
-phi_array[:, 0] = phis.T
-T_array[:, 0] = heights.T
+phi_array[:, 0] = phis.T  # set the first column to initial porosity @ depth
+T_array[:, 0] = depths_delta.T  # set first column to initial thicknesses
 
-# loop over columns
+# Iteratively decompact by looping over columns:
 for ii in range(1, 7):
-    # then loop over rows:
+    # then loop over rows (blocks):
     for jj in range(1, 7):
         # default to zero porosity and height at the unconfomity:
         if np.all(T_array[jj, :] == 0):
@@ -216,13 +194,13 @@ for ii in range(1, 7):
             )
 
 
-decompacted_depths = np.append(np.sum(T_array, axis=0), 0)[::-1]
+decompacted_depths = np.append(np.sum(T_array, axis=0), 0)
 
 T_table = pd.DataFrame(T_array)
 phi_table = pd.DataFrame(phi_array)
 # %%
 # make a subsidence curve...
-ages = [0, 10, 20, 30, 50, 60, 70, 75][::-1]  # Ma
+ages = [0, 10, 20, 30, 50, 60, 70, 75][::-1]  # Ma, reversed
 
 fig = plt.figure(figsize=(14, 7))
 ax = plt.subplot()
@@ -231,10 +209,73 @@ plt.plot(ages, decompacted_depths, label="Decompacted")
 plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
 plt.grid()
+plt.ylabel("Depth [m]")
+ax.set_xlabel("Absolute age [Ma]")
+plt.title("Subsidence history")
+plt.legend()
+# %% add the bathymetric correction:
+bath_depths = [200, 500, 1000, 0, 200, 500, 100]  # top down depths [m]
+bath_delta = [200, 300, 500, 0, 100, 300, 100]  # water 'thickness'' [m]
+
+# calculate the bulk density of each layer per column:
+def update_local_rho(phi, consts):
+    """eq. 9.34, Allen & Allen"""
+    rho_w = 1025  # kgm-3, water density
+    rho_new = phi * rho_w + (1 - phi) * consts["rho"]
+    return rho_new
+
+
+rho_array = np.zeros_like(phi_array)
+# loop over columns, then rows:
+for ii in range(7):
+    for jj in range(7):
+        # unconformity defaults to zero:
+        if np.all(T_array[jj, :] == 0):
+            rho_array[jj, ii] = 0
+            # skip the blocks we've removed:
+        elif jj < ii:
+            rho_array[jj, ii] = 0
+            # otherwise update the density for updated porosity:
+        else:
+            rho_array[jj, ii] = update_local_rho(phi_array[jj, ii], vars[liths[jj]])
+
+
+# then calculate the bulk density of the entire column:
+# eq. 9.35
+column_rho = np.zeros(shape=(7,))
+for ii in range(7):
+    column_rho[ii] = np.sum(
+        (rho_array[:, ii] * T_array[:, ii] / decompacted_depths[-ii - 1])
+    )
+
+# calculate Airy compensated tectonic subsidence for each column:
+# eq. 9.37
+sub_corr = np.zeros(shape=(7,))
+for ii in range(7):
+    sub_corr[ii] = (
+        decompacted_depths[-ii - 1] * ((rho_m - column_rho[ii]) / (rho_m - rho_w))
+        - bath_delta[ii] * (rho_w / (rho_m - rho_w))
+        + (bath_depths[ii] - bath_delta[ii])
+    )
+
+corrected_depths = np.append(sub_corr, 0)[::-1]  # slap a zero on the end and reverse
+
+
+# %% make a final figure:
+
+fig, ax = plt.subplots(figsize=(14, 7))
+ax = plt.subplot()
+plt.plot(ages, depths, label="Compacted", marker=".", markersize=10)
+plt.plot(ages, decompacted_depths, label="Decompacted", marker=".", markersize=10)
+plt.plot(ages, corrected_depths, label="Tectonic subsidence", marker=".", markersize=10)
+plt.gca().invert_yaxis()
+plt.gca().invert_xaxis()
+plt.grid()
 plt.ylabel("Thickness [m]")
-ax.xaxis.set_ticks_position("top")
 ax.set_xlabel("Time [Ma]")
-ax.xaxis.set_label_position("top")
 plt.title("Subsidence curve")
+xl = plt.xlim()
+yl = plt.ylim()
+ax.axvspan(30, 50, alpha=0.2, color="red", label="Unconformity")
 plt.legend()
 # %%
