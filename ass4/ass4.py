@@ -212,13 +212,13 @@ plt.legend()
 
 
 # %% add the bathymetric correction:
-bath_depths = [200, 500, 1000, 0, 200, 500, 100]  # top down depths [m]
-bath_delta = [200, 300, 500, 0, 100, 300, 100]  # water 'thickness'' [m]
+bath_heights = [200, 500, 1000, 0, 200, 500, 100]  # relative sea level [m]
+bath_depths = [200, 300, 500, 0, 100, 300, 100]  # water 'thickness'' [m]
 
 # calculate the bulk density of each layer per column:
 def update_local_rho(phi, consts):
     """eq. 9.34, Allen & Allen"""
-    rho_w = 1025  # kgm-3, water density
+    rho_w = 1035  # kgm-3, water density
     rho_new = phi * rho_w + (1 - phi) * consts["rho"]
     return rho_new
 
@@ -250,11 +250,9 @@ for ii in range(7):
 # eq. 9.37
 sub_corr = np.zeros(shape=(7,))
 for ii in range(7):
-    sub_corr[ii] = (
-        decompacted_depths[ii] * ((rho_m - column_rho[ii]) / (rho_m - rho_w))
-        - bath_depths[ii] * (rho_w / (rho_m - rho_w))
-        + (bath_delta[ii] - bath_depths[ii])
-    )
+    sub_corr[ii] = decompacted_depths[ii] * (
+        (rho_m - column_rho[ii]) / (rho_m - rho_w)
+    ) + (bath_depths[ii])
 
 corrected_depths = np.append(sub_corr, 0)[::-1]  # slap a zero on the end and reverse
 
