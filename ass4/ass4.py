@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy import stats
 
 #%% QUESTION 1
 # preliminaries:
@@ -45,6 +46,10 @@ etime = 1 - np.exp(-times / tau_myr)  # dimensionless [Myr/Myr]
 A = np.vstack([etime, np.ones(len(etime))]).T
 m, c = np.linalg.lstsq(A, elevations, rcond=None)[0]
 print(f"The slope of the linear regression is {m}")
+
+## with scipy:
+lin_regress = stats.linregress(etime, elevations)
+
 
 # make the plot:
 plt.figure(figsize=(14, 7))
@@ -122,6 +127,7 @@ depths = np.array(
     [0, 1000, 1800, 1900, 1900, 2800, 2900, 5100]
 )  # top down depths to edges
 depths_delta = np.array([1000, 800, 100, 0, 900, 100, 2200])  # top down thickneses
+compacted_depths = np.append(0, np.cumsum(depths_delta[::-1]))
 midpoints = depths[1:] - depths_delta / 2
 liths = [
     "lime",
@@ -139,8 +145,9 @@ liths = [
 phis = np.zeros_like(depths_delta, dtype=object)
 for ii in range(len(liths)):
     if depths_delta[ii] > 0:
-        phis[ii] = vars[liths[ii]]["phi"] * np.exp(
-            -vars[liths[ii]]["c"] * midpoints[ii]
+        phis[ii] = np.around(
+            vars[liths[ii]]["phi"] * np.exp(-vars[liths[ii]]["c"] * midpoints[ii]),
+            decimals=2,
         )
     else:
         phis[ii] = 0
@@ -149,16 +156,15 @@ for ii in range(len(liths)):
 def update_phi(consts, midpoint):
     """Updates porosity given a change in burial midpoint"""
     phi_new = consts["phi"] * np.exp(-consts["c"] * midpoint)
-    return phi_new
+    return np.around(phi_new, decimals=2)
 
 
 def update_T(height, phi_old, phi_new):
     """Updates the thickness of a layer given a change in porosity"""
     T_new = ((1 - phi_old) * height) / (1 - phi_new)
-    return T_new
+    return np.around(T_new, decimals=4)
 
 
-#%%
 # Initialize empty arrays for decompacted porosity and thicknesses:
 phi_array = np.zeros(shape=(7, 7))
 T_array = np.zeros(shape=(7, 7))
@@ -169,7 +175,8 @@ T_array[:, 0] = depths_delta.T  # set first column to initial thicknesses
 for ii in range(1, 7):
     # then loop over rows (blocks):
     for jj in range(1, 7):
-        # default to zero porosity and height at the unconfomity:
+        # default to zero porosity and height at the
+        #  unconfomity:
         if np.all(T_array[jj, :] == 0):
             phi_array[jj, ii] = 0
             T_array[jj, ii] = 0
@@ -196,15 +203,34 @@ for ii in range(1, 7):
 
 decompacted_depths = np.append(np.sum(T_array, axis=0), 0)
 
-T_table = pd.DataFrame(T_array)
-phi_table = pd.DataFrame(phi_array)
-# %%
+
 # make a subsidence curve...
 ages = [0, 10, 20, 30, 50, 60, 70, 75][::-1]  # Ma, reversed
 
+fig = plt.figure(figsize=(10, 6))
+ax1, ax2 = fig.subplots(2)
+ax1.table(
+    cellText=np.round(T_array),
+    colLabels=["iter" + str(ii + 1) for ii in range(7)],
+    rowLabels=["layer" + str(ii + 1) for ii in range(7)],
+    loc="center",
+)
+ax1.set_title("Decompacted thicknesses: [m]")
+ax1.axis("off")
+ax2.table(
+    cellText=np.around(phi_array, decimals=2),
+    colLabels=["iter" + str(ii + 1) for ii in range(7)],
+    rowLabels=["layer" + str(ii + 1) for ii in range(7)],
+    loc="center",
+)
+ax2.set_title("Decompacted porosities: ")
+ax2.axis("off")
+fig.tight_layout()
+
+
 fig = plt.figure(figsize=(14, 7))
 ax = plt.subplot()
-plt.plot(ages, depths, label="Compacted")
+plt.plot(ages, compacted_depths, label="Compacted")
 plt.plot(ages, decompacted_depths[::-1], label="Decompacted")
 plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
@@ -224,7 +250,7 @@ def update_local_rho(phi, consts):
     """eq. 9.34, Allen & Allen"""
     rho_w = 1035  # kgm-3, water density
     rho_new = phi * rho_w + (1 - phi) * consts["rho"]
-    return rho_new
+    return np.round(rho_new)
 
 
 rho_array = np.zeros_like(phi_array)
