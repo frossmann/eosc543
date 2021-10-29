@@ -272,10 +272,11 @@ plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
 plt.grid()
 plt.ylabel("Thickness [m]")
-ax.set_xlabel("Time [Ma]")
+ax.set_xlabel("Absolute Time [Ma]")
 plt.title("Subsidence curve")
 xl = plt.xlim()
 yl = plt.ylim()
-ax.axvspan(30, 50, alpha=0.2, color="red", label="Unconformity")
+ax.axvspan(30, 50, alpha=0.1, color="k", label="Unconformity")
 plt.legend()
+
 # %%
