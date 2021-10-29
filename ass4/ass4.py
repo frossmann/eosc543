@@ -207,6 +207,8 @@ decompacted_depths = np.append(np.sum(T_array, axis=0), 0)
 # make a subsidence curve...
 ages = [0, 10, 20, 30, 50, 60, 70, 75][::-1]  # Ma, reversed
 
+
+# plot the tables:
 fig = plt.figure(figsize=(10, 6))
 ax1, ax2 = fig.subplots(2)
 ax1.table(
@@ -227,7 +229,7 @@ ax2.set_title("Decompacted porosities: ")
 ax2.axis("off")
 fig.tight_layout()
 
-
+# plot the subsidence curves, compacted and decompacted:
 fig = plt.figure(figsize=(14, 7))
 ax = plt.subplot()
 plt.plot(ages, compacted_depths, label="Compacted")
@@ -287,11 +289,11 @@ for ii in range(7):
 corrected_depths = np.append(sub_corr, 0)[::-1]  # slap a zero on the end and reverse
 
 
-# %% make a final figure:
+# make a final figure:
 
 fig, ax = plt.subplots(figsize=(14, 7))
 ax = plt.subplot()
-plt.plot(ages, depths, label="Compacted", marker=".", markersize=10)
+plt.plot(ages, compacted_depths, label="Compacted", marker=".", markersize=10)
 plt.plot(ages, decompacted_depths[::-1], label="Decompacted", marker=".", markersize=10)
 plt.plot(ages, corrected_depths, label="Tectonic subsidence", marker=".", markersize=10)
 plt.gca().invert_yaxis()
