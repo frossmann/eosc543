@@ -15,7 +15,7 @@ rho_m = 3300  # kg/m3
 rho_s = 2100  # kg/m3
 rho_w = 1035  # kg/m3
 
-times = -np.array([100, 65, 55, 20, 0])  # Myr ago?
+times = np.array([100, 65, 55, 20, 0])  # Myr ago?
 elevations = -np.array([0.217, -1.031, -1.251, -1.704, -1.854]) * 1000  # m
 
 
@@ -26,6 +26,8 @@ plt.grid()
 plt.ylabel("Subsidence [m]")
 plt.xlabel("Myr from present")
 plt.title("Table 1 Elevation vs. Time")
+plt.gca().invert_yaxis()
+plt.gca().invert_xaxis()
 
 
 # b)
@@ -55,6 +57,7 @@ plt.ylabel("Subsidence [m]")
 plt.xlabel(r"$1-e^{-\frac{t}{\tau}}$")
 plt.title("Subsidence vs. scaled time")
 plt.grid()
+plt.gca().invert_yaxis()
 
 
 # e) find E0 and beta...
@@ -62,7 +65,7 @@ E0_w = (4 * y_l * rho_m * alpha * Tm) / (np.pi ** 2 * (rho_m - rho_w))  # for wa
 E0_s = (4 * y_l * rho_m * alpha * Tm) / (np.pi ** 2 * (rho_m - rho_s))  # for seds
 
 
-dummy_betas = np.arange(1, 2, 0.001)
+dummy_betas = np.arange(1, 5, 0.01)
 
 
 def get_slopes(E0, betas):
@@ -74,8 +77,8 @@ def get_slopes(E0, betas):
 
 slopes_w = get_slopes(E0_w, dummy_betas)
 slopes_s = get_slopes(E0_s, dummy_betas)
-beta_w = dummy_betas[np.isclose(slopes_w, m, rtol=0.01)]
-beta_s = dummy_betas[np.isclose(slopes_s, m, rtol=0.016)]
+beta_w = dummy_betas[np.isclose(slopes_w, -m, rtol=0.003)]
+beta_s = dummy_betas[np.isclose(slopes_s, -m, rtol=0.01)]
 print(f"Water filled basin:\n \tBeta = {beta_w[0]:.3}\n \tE0 = {E0_w:.2}")
 print(f"Seds filled basin:\n \tBeta = {beta_s[0]:.3}\n \tE0 = {E0_s:.2}")
 
@@ -86,17 +89,18 @@ plt.plot(dummy_betas, slopes_s, color="g", label="seds fill")
 plt.xlabel(r"$\beta$")
 plt.ylabel("Slope")
 xl = plt.xlim()
-plt.hlines(m, xl[0], xl[1], color="k", linestyle="--", alpha=0.5)
+plt.hlines(-m, xl[0], xl[1], color="r", linestyle="--", alpha=0.5, label=f"lsq")
 yl = plt.ylim()
 plt.vlines(beta_w, yl[0], yl[1], color="k", linestyle="--", alpha=0.5)
 plt.vlines(beta_s, yl[0], yl[1], color="k", linestyle="--", alpha=0.5)
-plt.title("Slope vs beta values")
+
+plt.title(r"Slope vs $\beta$")
 plt.grid()
-plt.plot(beta_w, m, marker="x", color="brown", markersize=10, label="beta_w")
-plt.plot(beta_s, m, marker="x", color="g", markersize=10, label="beta_s")
+plt.plot(beta_w, -m, marker="x", color="brown", markersize=10, label="beta_w")
+plt.plot(beta_s, -m, marker="x", color="g", markersize=10, label="beta_s")
 plt.legend()
-plt.text(1.1, 1400, r"$\beta_{w}$ = " + f"{beta_w[0]:.3}", fontsize=12)
-plt.text(1.1, 1200, r"$\beta_{s}$ = " + f"{beta_s[0]:.3}", fontsize=12)
+plt.text(1.95, 1050, r"$\beta_{w}$ = " + f"{beta_w[0]:.3}", fontsize=12)
+plt.text(0.9, 1300, r"$\beta_{s}$ = " + f"{beta_s[0]:.3}", fontsize=12)
 
 # f) reasoning.
 
