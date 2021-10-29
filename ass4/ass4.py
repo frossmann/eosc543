@@ -162,7 +162,7 @@ def update_phi(consts, midpoint):
 def update_T(height, phi_old, phi_new):
     """Updates the thickness of a layer given a change in porosity"""
     T_new = ((1 - phi_old) * height) / (1 - phi_new)
-    return np.around(T_new, decimals=4)
+    return np.around(T_new, decimals=0)
 
 
 # Initialize empty arrays for decompacted porosity and thicknesses:
@@ -244,8 +244,10 @@ plt.legend()
 
 
 # %% add the bathymetric correction:
-bath_heights = [200, 500, 1000, 0, 200, 500, 100]  # relative sea level [m]
-bath_depths = [200, 300, 500, 0, 100, 300, 100]  # water 'thickness'' [m]
+bath_heights_max = [200, 500, 1000, 0, 200, 500, 100]  # max water 'thickness'' [m]
+bath_heights_min = [0, 200, 500, 0, 100, 200, 0]  # max water 'thickness'' [m]
+bath_decompacted_heights_max = decompacted_depths + np.append(bath_heights_max, 0)
+bath_decompacted_heights_min = decompacted_depths + np.append(bath_heights_min, 0)
 
 # calculate the bulk density of each layer per column:
 def update_local_rho(phi, consts):
@@ -284,18 +286,48 @@ sub_corr = np.zeros(shape=(7,))
 for ii in range(7):
     sub_corr[ii] = decompacted_depths[ii] * (
         (rho_m - column_rho[ii]) / (rho_m - rho_w)
-    ) + (bath_depths[ii])
+    ) + (bath_heights_max[ii])
 
-corrected_depths = np.append(sub_corr, 0)[::-1]  # slap a zero on the end and reverse
+
+airy_corrected_depths = np.append(sub_corr, 0)[
+    ::-1
+]  # slap a zero on the end and reverse
 
 
 # make a final figure:
 
 fig, ax = plt.subplots(figsize=(14, 7))
 ax = plt.subplot()
-plt.plot(ages, compacted_depths, label="Compacted", marker=".", markersize=10)
-plt.plot(ages, decompacted_depths[::-1], label="Decompacted", marker=".", markersize=10)
-plt.plot(ages, corrected_depths, label="Tectonic subsidence", marker=".", markersize=10)
+plt.plot(
+    ages[4:],
+    compacted_depths[4:],
+    label="Compacted",
+    marker=".",
+    markersize=10,
+    color="g",
+)
+plt.plot(ages[:4], compacted_depths[:4], marker=".", markersize=10, color="g")
+plt.plot(
+    ages[4:],
+    decompacted_depths[::-1][4:],
+    label="Decompacted",
+    marker=".",
+    markersize=10,
+    color="b",
+)
+plt.plot(ages[:4], decompacted_depths[::-1][:4], marker=".", markersize=10, color="b")
+plt.plot(
+    ages[4:],
+    airy_corrected_depths[4:],
+    label="Tectonic subsidence",
+    marker=".",
+    markersize=10,
+    color="orange",
+)
+plt.plot(ages[:4], airy_corrected_depths[:4], marker=".", markersize=10, color="orange")
+# add bathymetry data:
+# plt.fill_between(ages[4:], bath_decompacted_heights_min[::-1][4:], bath_decompacted_heights_max[::-1][4:], alpha=0.3)
+# plt.fill_between(ages[:4], bath_decompacted_heights_min[::-1][:4], bath_decompacted_heights_max[::-1][:4], alpha=0.3)
 plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
 plt.grid()
