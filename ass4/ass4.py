@@ -2,7 +2,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 from scipy import stats
 
 #%% QUESTION 1
@@ -201,11 +200,13 @@ for ii in range(1, 7):
             )
 
 
-decompacted_depths = np.append(np.sum(T_array, axis=0), 0)
-
-
 # make a subsidence curve...
 ages = [0, 10, 20, 30, 50, 60, 70, 75][::-1]  # Ma, reversed
+
+
+# T_array is an upper triangular matrix, so reverse it to be in the
+# same format as the time array.
+decompacted_depths = np.append(np.sum(T_array, axis=0), 0)
 
 
 # plot the tables:
@@ -244,10 +245,9 @@ plt.legend()
 
 
 # %% add the bathymetric correction:
-bath_heights_max = [200, 500, 1000, 0, 200, 500, 100]  # max water 'thickness'' [m]
-bath_heights_min = [0, 200, 500, 0, 100, 200, 0]  # max water 'thickness'' [m]
-bath_decompacted_heights_max = decompacted_depths + np.append(bath_heights_max, 0)
-bath_decompacted_heights_min = decompacted_depths + np.append(bath_heights_min, 0)
+bath_max = [0, 200, 500, 1000, 200, 500, 1000, 0]  # max water 'thickness'' [m]
+bath_decompacted_max = decompacted_depths + bath_max
+
 
 # calculate the bulk density of each layer per column:
 def update_local_rho(phi, consts):
@@ -286,7 +286,7 @@ sub_corr = np.zeros(shape=(7,))
 for ii in range(7):
     sub_corr[ii] = decompacted_depths[ii] * (
         (rho_m - column_rho[ii]) / (rho_m - rho_w)
-    ) + (bath_heights_max[ii])
+    ) + (bath_max[ii])
 
 
 airy_corrected_depths = np.append(sub_corr, 0)[
@@ -299,35 +299,40 @@ airy_corrected_depths = np.append(sub_corr, 0)[
 fig, ax = plt.subplots(figsize=(14, 7))
 ax = plt.subplot()
 plt.plot(
-    ages[4:],
-    compacted_depths[4:],
-    label="Compacted",
+    ages,
+    compacted_depths,
+    label="Uncorrected Subsidence",
     marker=".",
     markersize=10,
-    color="g",
+    color="gray",
+    linestyle="--",
 )
-plt.plot(ages[:4], compacted_depths[:4], marker=".", markersize=10, color="g")
+
 plt.plot(
-    ages[4:],
-    decompacted_depths[::-1][4:],
+    ages,
+    decompacted_depths[::-1],
     label="Decompacted",
     marker=".",
     markersize=10,
-    color="b",
+    color="red",
 )
-plt.plot(ages[:4], decompacted_depths[::-1][:4], marker=".", markersize=10, color="b")
+
 plt.plot(
-    ages[4:],
-    airy_corrected_depths[4:],
+    ages,
+    airy_corrected_depths,
     label="Tectonic subsidence",
     marker=".",
     markersize=10,
     color="orange",
 )
-plt.plot(ages[:4], airy_corrected_depths[:4], marker=".", markersize=10, color="orange")
-# add bathymetry data:
-# plt.fill_between(ages[4:], bath_decompacted_heights_min[::-1][4:], bath_decompacted_heights_max[::-1][4:], alpha=0.3)
-# plt.fill_between(ages[:4], bath_decompacted_heights_min[::-1][:4], bath_decompacted_heights_max[::-1][:4], alpha=0.3)
+plt.plot(
+    ages,
+    bath_decompacted_max[::-1],
+    label="Bathymetry correction (maximum)",
+    color="blue",
+    marker=".",
+    markersize=10,
+)
 plt.gca().invert_yaxis()
 plt.gca().invert_xaxis()
 plt.grid()
@@ -338,5 +343,8 @@ xl = plt.xlim()
 yl = plt.ylim()
 ax.axvspan(30, 50, alpha=0.1, color="k", label="Unconformity")
 plt.legend()
+
+# %% make the ocean blocks:
+#
 
 # %%
