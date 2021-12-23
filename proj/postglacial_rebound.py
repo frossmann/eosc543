@@ -1,6 +1,7 @@
 #%%
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy import core
 import pandas as pd
 
 
@@ -15,13 +16,6 @@ def init_deflection(q0, x_max, D, delta_rho, k):
 def update_deflection(time, w_old, tau):
     w_new = w_old * np.exp(-time / tau)
     return w_new
-
-
-def get_tau(nu, D, k, delta_rho):
-    # time in seconds
-    g = -9.81  # ms-2
-    tau = nu / (D * k ** 4 + delta_rho * g)
-    return np.abs(tau)
 
 
 def ts_tau(mu, llambda):
@@ -41,7 +35,6 @@ q0 = 4000 * 9.81 * 900  # 4km high in m
 x_max = 1400 * 1000  # 1000km halfspace in m
 D = 5e23  # flexural rigidity
 mu = 5e21  # viscosity
-L_mantle = 10 ** 6  # mantle length (?)
 delta_rho = 3300 - 900  # ...
 llambda = 4000 * 1000
 k = 2 * np.pi / (llambda)  #  llambda
@@ -51,10 +44,9 @@ y2s = 365 * 24 * 60 * 60  # years to seconds
 x, w0 = init_deflection(q0, x_max, D, delta_rho, k)
 
 # find relaxation time:
-nu = mu / L_mantle
-tau = get_tau(nu, D, k, delta_rho)
+tau = ts_tau(mu, llambda)
 half_life = np.log(2) * tau / 60 / 60 / 24 / 365.25
-print(f"{half_life=}")
+print(f"half life: {half_life} years")
 
 # initialize some times
 times = np.array([0, 1000, 2000, 5000, 10000]) * 365 * 24 * 60 * 60
@@ -80,23 +72,13 @@ mainland = df[df.index.str.startswith("Lower")]
 ages = mainland["Median calibrated age"].to_numpy()
 msl = mainland["MSL (m)"].to_numpy()
 
-# %%
-youngs_mod = 7e10  # youngs modulus [Pa]
-poissons_ratio = 0.25  # poisson's ratio
-elastic_thickness = 30 * 1000  # [m]
-flexural_rigidity = (youngs_mod * (elastic_thickness ** 3)) / (
-    12 * (1 - (poissons_ratio ** 2))
-)
-
+# %% MAINLAND VANCOUVER
 
 llambda = 900 * 1000
 k = 2 * np.pi / (llambda)
 w0 = 200  # initial height guess
 mus = [1e19, 5e19, 1e20, 2e20]
-L_mantle = 1e2 * 1000  # mantle length (?)
-nus = [mu / L_mantle for mu in mus]
-taus = [get_tau(nu, flexural_rigidity, k, delta_rho) for nu in nus]
-# taus = [ts_tau(nu, llambda) for nu in nus]
+taus = [ts_tau(mu, llambda) for mu in mus]
 t0 = 14000  # time since uplift
 ages_since = t0 - ages
 
@@ -107,34 +89,98 @@ plt.scatter(ages_since, msl, 5)
 
 for ii, tau in enumerate(taus):
     half_life = np.log(2) * tau / 60 / 60 / 24 / 365.25
-    print(f"{half_life=}")
+    print(f"half life: {half_life} years")
     plt.plot(
         times / y2s, w0 * np.exp(-times / tau), label=rf"$\mu$: {mus[ii]}", alpha=0.7
     )
 plt.xlabel("Time since uplift [yr]")
 plt.ylabel("Elevation")
-plt.title("Mainland Vancouver paleo_RSL")
+plt.title("Lower Fraser Valley GIA")
 plt.legend()
 plt.grid()
-# %%
-# %% data entry
-times_ago = np.array([14200, 14000, 13900, 13300, 12650, 12600, 12300, 1500])
-t_0 = 14200  # start of uplift
-times_since = t_0 - times_ago
-elevations = np.array([197, 175, 144, 75, 26, 14, 7, 0.75])
 
-fig, ax = plt.subplots(figsize=(12, 6))
-plt.scatter(times_since, elevations)
+
+#%% NORTH STRAIGHT OF GEORGIA
+nsog = df[df.index.str.startswith("North Strait of Georgia")]
+
+# drop Cortez bay measurements (outliers here)
+# nsog = nsog_full[nsog_full["Site"].str.startswith("Cortes Bay")==False]
+
+ages = nsog["Median calibrated age"].to_numpy()
+msl = nsog["MSL (m)"].to_numpy()
+
+# Add core observations from Fedje (2018)
+core_times = np.array([14200, 14000, 13900, 13300, 12650, 12600, 12300, 1500])
+t_0 = 14200  # start of uplift
+core_times_since = t_0 - core_times
+core_elevations = np.array([197, 175, 144, 75, 26, 14, 7, 0.75])
+
+
+llambda = 900 * 1000
+k = 2 * np.pi / (llambda)
+w0 = 200  # initial height guess
+mus = [1e19, 5e19, 1e20, 2e20]
+taus = [ts_tau(mu, llambda) for mu in mus]
+t0 = 14000  # time since uplift
+ages_since = t0 - ages
+
+times = np.arange(0, t0, 100) * y2s
+fig, ax = plt.subplots(figsize=(14, 7))
+plt.scatter(ages_since[np.where(ages_since > 0)], msl[np.where(ages_since > 0)], 8)
+plt.scatter(core_times_since, core_elevations, 8)
+# plt.scatter(times_since, elevations)
+
 for ii, tau in enumerate(taus):
-    plt.plot(times / y2s, w0 * np.exp(-times / tau), label=rf"$\mu$: {mus[ii]}")
-plt.title("N. Georgia Strait (cores only) paleo-RSL")
-plt.legend()
-plt.grid()
+    half_life = np.log(2) * tau / 60 / 60 / 24 / 365.25
+    print(f"half life: {half_life} years")
+    plt.plot(
+        times / y2s, w0 * np.exp(-times / tau), label=rf"$\mu$: {mus[ii]}", alpha=0.7
+    )
 plt.xlabel("Time since uplift [yr]")
 plt.ylabel("Elevation")
+plt.title("Northern Strait of Georgia GIA")
+plt.legend()
+plt.grid()
+# %% NORTHERN STRAIGHT OF GEORGIA (cores only)
 
-half_life = np.log(2) * taus[1] / 60 / 60 / 24 / 365.25
-print(f"{half_life=}")
+# fig, ax = plt.subplots(figsize=(12, 6))
+# plt.scatter(times_since, elevations)
+# for ii, tau in enumerate(taus):
+#     plt.plot(times / y2s, w0 * np.exp(-times / tau), label=rf"$\mu$: {mus[ii]}")
+# plt.title("N. Georgia Strait (cores only) GIA")
+# plt.legend()
+# plt.grid()
+# plt.xlabel("Time since uplift [yr]")
+# plt.ylabel("Elevation")
+
+# half_life = np.log(2) * taus[1] / 60 / 60 / 24 / 365.25
+# print(f"hl: {half_life}")
+
+#%%
+
+
+# %%
+from scipy import interpolate
+
+barbados = pd.read_excel(
+    "/Users/francis/repos/eosc543/proj/extended_Barbados_sea_level_record.xlsx"
+)
+rsl = np.array([depth for depth in -barbados["Depth(m) uplift corrected"]])
+rsl_time = np.array([age for age in barbados["Mean Th/U Age yr BP"]])
+
+iloc = np.where(rsl_time < 16000)
+
+rsl_crop = rsl[iloc]
+rsl_time_crop = rsl_time[iloc]
+
+
+# spl = interpolate.Rbf(rsl_time_crop[np.argsort(rsl_time_crop)], rsl_crop[np.argsort(rsl_time_crop)])
+# spl.set_smoothing_factor(0.1)
+# xnew = np.linspace(rsl_time_crop.min(), rsl_time_crop.max(), num=100, endpoint=True)
+
+plt.figure()
+plt.scatter(rsl_time_crop, rsl_crop)
+# plt.plot(xnew, spl(xnew))
 
 
 # %%
